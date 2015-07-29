@@ -1,49 +1,59 @@
 #!/usr/bin/env python
 
+"""shp2maproulette - a script that creates or updates a MapRoulette challenge from a Shapefile.
+
+Usage:
+    shp2maproulette.py OPTFILE
+    shp2maproulette.py --version
+
+Options:
+    -h --help       Show this help text
+    --version       Output script version
+"""
+
 import shapefile
 import shapeinfo
 from maproulette import MapRouletteServer, MapRouletteChallenge, MapRouletteTask, MapRouletteTaskCollection
 from geojson import FeatureCollection, Feature
 import sys
-from fish import ProgressFish
+import yaml
+from docopt import docopt
 
-# TODO Constants, these need to be parameters
+__version__ = '0.0.2'
 
-# This is your source Shapefile
-SHAPEFILE='/Users/martijnv/tmp/crossings/shape/crossings.shp'
+# initialize docopt argument parsing
+arguments = docopt(__doc__, version='shp2maproulette {}'.format(__version__))
 
-# This is the MapRoulette challenge slug
-CHALLENGE_SLUG='fix-railway-crossings'
+# read in optfile
+options = None
+try:
+    with open(arguments['OPTFILE']) as optfile:
+        options = yaml.load(optfile)
+except Exception, e:
+    raise e
 
-# And the MapRoulette challenge title
-CHALLENGE_TITLE='Fix U.S. railway crossings'
+if not all (opt in options for opt in (
+    'server',
+    'shapefile',
+    'challenge_slug',
+    'challenge_title',
+    'identifier_field',
+    'instruction_template',
+    'instruction_replacement_fields')):
+    print 'options file does not contain all keys.'
+    sys.exit(1)
 
-# The index of the field that will hold your unique identifier
-IDENTIFIER_FIELD=0
-
-# Limit the challenge to this amount of tasks (for debugging purposes)
-LIMIT=100
-
-# The template for the task instruction. Use {} for placeholders to be replaced from attribute values in the Shapefile
-INSTRUCTION_TEMPLATE='The Federal Railway Administration has a record of a level railway crossing at {}. Chances are that OSM does not have a crossing yet. If you see this:\n\n![crossing](https://www.dropbox.com/s/aw5sm6gle51m63f/Screenshot%202015-07-05%2019.16.46.png?dl=1)\n\n OSM already has a crossing and you can skip the task. If the little \'X\' is missing where railway and road intersect, you may need to add a `railway=level_crossing` at the intersection node, and make sure the railway and the road share the node.'
-
-# A list of field indices holding replacement values for the template string above.
-# Make sure the length of this list matches the number of placeholders in your string.
-INSTRUCTION_REPLACEMENT_FIELDS=[4]
-
-# initialize counters
+# initialize counter
 row_count = 0
-tasks_created=0
-tasks_updated=0
 
 # get a server
-server = MapRouletteServer()
+server = MapRouletteServer(options['server'])
 
 # get the challenge
 challenge = None
 challenge = MapRouletteChallenge(
-	slug=CHALLENGE_SLUG,
-	title=CHALLENGE_TITLE,
+	slug=options['challenge_slug'],
+	title=options['challenge_title'],
 	active=True)
 
 # there is no way to upsert a challenge, so we need this conditional
@@ -55,36 +65,39 @@ else:
 	challenge.create(server)
 
 # read in the shapefile features
-shapefile_reader = shapefile.Reader(SHAPEFILE)
+shapefile_reader = shapefile.Reader(options['shapefile'])
 shapes = shapefile_reader.shapes()
 
+# set limit
+LIMIT = options['limit'] or None
 limit = min(LIMIT, len(shapes))
-# initialize progress bar
-fish = ProgressFish(total=limit)
+
+# tasks list
+tasks = []
 
 # iterate over shapefile features + records
 for shape_record in shapefile_reader.iterShapeRecords():
     task = MapRouletteTask(
-    	challenge,
-    	identifier=shape_record.record[IDENTIFIER_FIELD],
+    	shape_record.record[options['identifier_field']],
+        challenge=challenge,
     	geometries=FeatureCollection(
     		[Feature(
     			geometry=shape_record.shape.__geo_interface__)]),
-    	instruction=INSTRUCTION_TEMPLATE.format(
-    		*[shape_record.record[f].strip()
-    		for f
-    		in INSTRUCTION_REPLACEMENT_FIELDS]))
-    if task.exists(server):
-    	task.update(server)
-    	tasks_updated+=1
-    else:
-    	task.create(server)
-    	tasks_created+=1
+    	instruction=r'{}'.format(
+            options['instruction_template'].format(
+                **{key: shape_record.record[val].strip()
+        		for (key, val)
+                in options['instruction_replacement_fields'].items()})))
+    tasks.append(task)
     row_count = row_count + 1
     if row_count == limit:
     	break
-    fish.animate(amount=row_count)
 
+new_collection = MapRouletteTaskCollection(challenge, tasks=tasks)
+print 'reconciling {} tasks with the server...'.format(len(tasks))
+result = new_collection.reconcile(server)
 
-print 'done. {} tasks created, {} tasks updated'.format(
-	tasks_created, tasks_updated)
+print 'done. {new} tasks created, {changed} tasks changed, {deleted} tasks deleted'.format(
+	new=len(result['new']),
+    changed=len(result['changed']),
+    deleted=len(result['deleted']))

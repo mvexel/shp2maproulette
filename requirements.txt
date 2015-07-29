@@ -1,5 +1,5 @@
 fish==1.1
 geojson==1.2.1
-maproulette==0.2.4
+maproulette==0.2.5
 pyshp==1.2.3
 requests==2.7.0

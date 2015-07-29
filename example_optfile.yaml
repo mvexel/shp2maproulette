@@ -1,0 +1,28 @@
+# this is the server endpoint you want to post to
+server: http://localhost:5000/api
+# This is your source Shapefile
+shapefile: /Users/martijnv/Dropbox/geodata/crossings/shape/crossings.shp
+# This is the MapRoulette challenge slug
+challenge_slug: fix-railway-crossings
+# And the MapRoulette challenge title
+challenge_title: Fix U.S. railway crossings
+# The index of the shapefile attribute field that holds your unique identifier
+identifier_field: 0
+# The template for the task instruction. Use {} for placeholders to be replaced from attribute values in the Shapefile
+instruction_template: |
+  The Federal Railway Administration has a record of a level railway crossing at {street}.
+  Chances are that OSM does not have a crossing yet. If you see this:
+
+  ![crossing](https://www.dropbox.com/s/aw5sm6gle51m63f/Screenshot%202015-07-05%2019.16.46.png?dl=1)
+
+  OSM already has a crossing and you can skip the task.
+  If the little `X` is missing where railway and road intersect,
+  you may need to add a `railway=level_crossing` at the intersection node,
+  and make sure the railway and the road share the node.
+# A dictionary of field indices holding replacement values for the template string above.
+# Make sure the length of this dict matches the number of placeholders in your string.
+# Make sure that the keys match the named placeholders ({name}).
+instruction_replacement_fields: 
+  street: 4
+# limit # of tasks to:
+limit: 1000
