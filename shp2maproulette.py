@@ -19,7 +19,7 @@ import sys
 import yaml
 from docopt import docopt
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 # initialize docopt argument parsing
 arguments = docopt(__doc__, version='shp2maproulette {}'.format(__version__))
