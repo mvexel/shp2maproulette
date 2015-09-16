@@ -1,7 +1,10 @@
 # this is the server endpoint you want to post to
-server: http://localhost:5000/api
+server: 
+  url: http://maproulette.org/api
+  user: CHANGEME
+  password: CHANGEME
 # This is your source Shapefile
-shapefile: /Users/martijnv/Dropbox/geodata/crossings/shape/crossings.shp
+shapefile: /home/mvexel/Dropbox/geodata/crossings/shape/crossings.shp
 # This is the MapRoulette challenge slug
 challenge_slug: fix-railway-crossings
 # And the MapRoulette challenge title
@@ -25,4 +28,4 @@ instruction_template: |
 instruction_replacement_fields: 
   street: 4
 # limit # of tasks to:
-limit: 1000
+# limit = 1000

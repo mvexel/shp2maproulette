@@ -1,5 +1,7 @@
-fish==1.1
+PyYAML==3.11
+argparse==1.2.1
+docopt==0.6.2
 geojson==1.2.1
-maproulette==0.2.5
+maproulette>=0.2.5
 pyshp==1.2.3
 requests==2.7.0
